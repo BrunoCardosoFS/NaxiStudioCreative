@@ -1,13 +1,18 @@
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import os
-import html
 import urllib.parse
+import json
 
 class CustomRequestHandler(SimpleHTTPRequestHandler):
     # Dicionário que mapeia as rotas para os diretórios correspondentes
     routes = {
         '/D:/MEDIA/COMERCIAIS': 'D:/MEDIA/COMERCIAIS',
-        '/D:/MEDIA/MÚSICAS': 'D:/MEDIA/MÚSICAS'
+        '/D:/MEDIA/MÚSICAS': 'D:/MEDIA/MÚSICAS',
+        '/D:/MEDIA/MÚSICAS/Hits Sertanejo': 'D:/MEDIA/MÚSICAS/Hits Sertanejo',
+        '/D:/MEDIA/MÚSICAS': 'D:/MEDIA/MÚSICAS',
+        '/D:/': 'D:/',
+        '/D:/MEDIA/MÚSICAS': 'D:/MEDIA/MÚSICAS',
+        '/D:/MEDIA/MÚSICAS': 'D:/MEDIA/MÚSICAS',
     }
 
     def do_GET(self):
@@ -28,9 +33,10 @@ class CustomRequestHandler(SimpleHTTPRequestHandler):
                 try:
                     # Tenta servir a lista de arquivos no diretório
                     self.send_response(200)
-                    self.send_header("Content-type", "text/html; charset=utf-8")
+                    # self.send_header("Content-type", "text/html; charset=utf-8")
+                    self.send_header("Content-type", "application/json; charset=utf-8")
                     self.end_headers()
-                    self.wfile.write(self.list_directory_html(self.directory, path).encode())
+                    self.wfile.write(self.list_directory_json(self.directory, path).encode())
                 except OSError:
                     # Se houver um erro ao listar o diretório, retorna um erro 404
                     self.send_error(404, "Directory listing failed")
@@ -58,44 +64,42 @@ class CustomRequestHandler(SimpleHTTPRequestHandler):
                 if os.path.exists(file_path):
                     return file_path
         return None
-
-    def list_directory_html(self, path, relative_path):
-        # Lista os arquivos no diretório e gera uma página HTML com links
+    
+    def list_directory_json(self, path, relative_path):
         try:
             list = os.listdir(path)
             list.sort(key=lambda a: a.lower())
+            # return json.dumps({"files": list})
         except OSError:
             self.send_error(404, "Directory listing failed")
             return None
-
-        r = []
+        
+        files = {
+            "path": "",
+            "files": []
+        }
         try:
-            displaypath = html.escape(path)
-            r.append('<!DOCTYPE html>')
-            r.append('<html>')
-            r.append('<head>')
-            r.append('<title>Directory listing for %s</title>' % displaypath)
-            r.append('</head>')
-            r.append('<body>')
-            r.append('<h2>Directory listing for %s</h2>' % displaypath)
-            r.append('<hr>')
-            r.append('<ul>')
+            files['path'] = path
             for name in list:
                 fullname = os.path.join(path, name)
                 displayname = linkname = name
+                isFolder = 0
                 # Adiciona "/" para diretórios
                 if os.path.isdir(fullname):
                     displayname = name + '/'
                     linkname = name + '/'
-                r.append('<li><a href="%s">%s</a></li>' % (os.path.join(relative_path, linkname), displayname))
-            r.append('</ul>')
-            r.append('<hr>')
-            r.append('</body>')
-            r.append('</html>')
+                    isFolder = 1
+
+                files['files'].append({
+                    "title": displayname,
+                    "link": os.path.join(relative_path, linkname),
+                    "type": isFolder
+                })
         except Exception as e:
             print("Error:", e)
 
-        return '\n'.join(r)
+        return json.dumps(files)
+
 
 def run(server_class=HTTPServer, handler_class=CustomRequestHandler, port=8000):
     # Inicia o servidor HTTP
