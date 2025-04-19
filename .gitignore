@@ -1,7 +1,0 @@
-.venv/
-tests/
-output/
-
-main.spec
-compile.py
-__pycache__
